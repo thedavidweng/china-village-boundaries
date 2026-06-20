@@ -17,12 +17,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Mirror to Codeberg
-        uses: cssnr/mirror-repository-action@4e3e1a67ee37ac30073df96fe9f53ef7ec4a4f80 # v1
+        uses: cssnr/mirror-repository-action@2af5bf347684245f52b5f56502956a57f9b8813e # v1
         with:
           host: https://codeberg.org
           username: thedavidweng
