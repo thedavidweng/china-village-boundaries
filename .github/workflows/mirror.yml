@@ -6,6 +6,9 @@ on:
     tags: ["**"]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   mirror:
     name: Mirror
@@ -19,7 +22,7 @@ jobs:
           fetch-depth: 0
 
       - name: Mirror to Codeberg
-        uses: cssnr/mirror-repository-action@v1
+        uses: cssnr/mirror-repository-action@4e3e1a67ee37ac30073df96fe9f53ef7ec4a4f80 # v1
         with:
           host: https://codeberg.org
           username: thedavidweng
