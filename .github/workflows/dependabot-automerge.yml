@@ -1,0 +1,79 @@
+name: Dependabot auto-merge
+
+# Official pattern: pull_request_target so GITHUB_TOKEN has write access on
+# Dependabot PRs. Never checkout or execute PR code in this workflow.
+on:
+  pull_request_target:
+
+permissions: {}
+
+concurrency:
+  group: dependabot-automerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  automerge:
+    name: Enable auto-merge
+    if: >
+      github.event.pull_request.user.login == 'dependabot[bot]'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for safe updates
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          DEP_NAMES: ${{ steps.meta.outputs.dependency-names }}
+          PKG_ECOSYSTEM: ${{ steps.meta.outputs.package-ecosystem }}
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+          DEP_TYPE: ${{ steps.meta.outputs.dependency-type }}
+        run: |
+          set -euo pipefail
+          # Release/review tooling stays manual.
+          deny='googleapis/release-please-action dependabot/fetch-metadata'
+          for blocked in $deny; do
+            case ",${DEP_NAMES}," in
+              *",${blocked},"*)
+                echo "skip auto-merge (denylist): $blocked"
+                exit 0
+                ;;
+            esac
+          done
+
+          eco="${PKG_ECOSYSTEM}"
+          ut="${UPDATE_TYPE}"
+          dt="${DEP_TYPE}"
+
+          eligible=false
+          # patch always (after denylist)
+          if [ "$ut" = "version-update:semver-patch" ]; then
+            eligible=true
+          fi
+          # github-actions non-major: auto (covers SHA pin bumps with empty update-type)
+          if [ "$eco" = "github-actions" ] || [ "$eco" = "github_actions" ]; then
+            if [ "$ut" != "version-update:semver-major" ]; then
+              eligible=true
+            fi
+          fi
+          # minor of non-production / indirect / dev deps
+          if [ "$ut" = "version-update:semver-minor" ] && [ "$dt" != "direct:production" ]; then
+            eligible=true
+          fi
+
+          if [ "$eligible" != true ]; then
+            echo "skip auto-merge: ecosystem=$eco update-type=$ut dependency-type=$dt names=$DEP_NAMES"
+            exit 0
+          fi
+
+          echo "enable auto-merge: ecosystem=$eco update-type=$ut dependency-type=$dt names=$DEP_NAMES"
+          gh pr merge --auto --squash "$PR_URL"
