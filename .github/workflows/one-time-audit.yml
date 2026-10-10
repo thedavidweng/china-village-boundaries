@@ -1,0 +1,20 @@
+name: One-time v2 audit
+on:
+  pull_request:
+permissions: {}
+concurrency:
+  group: one-time-audit-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/jactionlint@2462f925040c2aa1c88714dc85bc12d869cc4998 # v2.0.2
+        with:
+          profile: default
